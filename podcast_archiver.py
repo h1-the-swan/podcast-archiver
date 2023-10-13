@@ -69,6 +69,8 @@ class PodcastArchiver:
     update = False
     progress = False
     maximumEpisodes = None
+    prefix = False
+    current_file_idx = 0
 
     feedlist = []
 
@@ -99,6 +101,7 @@ class PodcastArchiver:
         self.progress = args.progress
         self.slugify = args.slugify
         self.maximumEpisodes = args.max_episodes or None
+        self.prefix = args.number_filenames
 
         if self.verbose > 1:
             print("Verbose level: ", self.verbose)
@@ -128,7 +131,11 @@ class PodcastArchiver:
             if self.verbose > 0:
                 print("\nDownloading archive for: " + feed)
             linklist = self.processPodcastLink(feed)
-            self.downloadPodcastFiles(linklist)
+            try:
+                self.downloadPodcastFiles(linklist)
+            finally:
+                # reset file index
+                self.current_file_idx = 0
 
         if self.verbose > 0:
             print("\nDone.")
@@ -170,6 +177,10 @@ class PodcastArchiver:
             basename.replace(path.sep, '_')
             self._feed_title.replace(path.pathsep, '_')
             self._feed_title.replace(path.sep, '_')
+
+        # If requested, prefix the file index
+        if self.prefix:
+            basename = f"{self.current_file_idx:04d}_{basename}"
 
         # Generate local path and check for existence
         if self.subdirs:
@@ -372,6 +383,7 @@ class PodcastArchiver:
 
                 if self.verbose > 1:
                     print("\t✓ Download successful.")
+                self.current_file_idx += 1
             except (urllib.error.HTTPError,
                     urllib.error.URLError) as error:
                 if self.verbose > 1:
@@ -423,6 +435,8 @@ if __name__ == "__main__":
         parser.add_argument('-m', '--max-episodes', type=int,
                             help='''Only download the given number of episodes per podcast
                                  feed. Useful if you don't really need the entire backlog.''')
+        parser.add_argument('-n', '--number-filenames', action='store_true',
+                            help='''Prefix a number for each file download per podcast feed''')
 
         args = parser.parse_args()
 
